@@ -124,7 +124,6 @@ python-multipart==0.0.20
 pytube==15.0.0
 pytz==2025.2
 pyunormalize==16.0.0
-pywin32==310
 PyYAML==6.0.2
 regex==2024.11.6
 requests==2.32.3
