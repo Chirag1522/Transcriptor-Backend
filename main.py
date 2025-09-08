@@ -23,7 +23,6 @@ async def ping():
 @app.post("/transcribe/")
 async def transcribe_endpoint(url: str = Form(...)):
     transcript = transcribe_audio(url)
-    return {
         "transcript": transcript,
         "title": "Transcribed Video",
         "duration": 300
