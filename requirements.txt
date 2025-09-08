@@ -6,3 +6,4 @@ transformers
 deep-translator
 yt-dlp
 python-multipart
+pytube
