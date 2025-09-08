@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+pytube
+openai-whisper
+youtube_transcript_api
