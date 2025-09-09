@@ -18,6 +18,10 @@ app.add_middleware(
 @app.get("/ping")
 async def ping():
     return {"message": "pong"}
+    
+@app.get("/")
+def read_root():
+    return {"message": "Hello, FastAPI!"}
 
 # ---------------- Transcription ----------------
 @app.post("/transcribe/")
