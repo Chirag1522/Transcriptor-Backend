@@ -1,9 +1,8 @@
 fastapi
 uvicorn
 python-multipart
-transformers
-torch
-sentencepiece
+requests
+python-dotenv
 youtube-transcript-api
 deep-translator
 googletrans==4.0.0-rc1
