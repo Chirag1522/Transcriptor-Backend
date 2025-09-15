@@ -1,62 +1,52 @@
-# main.py
-from fastapi import FastAPI, Form, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from transcriber import fetch_captions
-from Summarizer import get_summary   # make sure lowercase file name matches
-from translator import translate
+import requests
+import unicodedata
+import os
 
-app = FastAPI()
+# 🔑 Read Hugging Face token from environment variable
+HF_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if not HF_API_KEY:
+    raise RuntimeError("❌ Missing HUGGINGFACE_API_KEY environment variable")
 
-@app.get("/ping")
-async def ping():
-    return {"message": "pong"}
+# Hugging Face DistilBART model endpoint
+API_URL = "https://api-inference.huggingface.co/models/sshleifer/distilbart-cnn-12-6"
+HEADERS = {"Authorization": f"Bearer {HF_API_KEY}"}
 
-@app.get("/")
-def read_root():
-    return {"message": "Hello, FastAPI!"}
 
-# ---------------- Transcription ----------------
-@app.post("/transcribe/")
-async def transcribe_endpoint(url: str = Form(...)):
-    transcript = fetch_captions(url)
-    return {
-        "transcript": transcript,
-        "title": "Transcribed Video",
-        "duration": 300
-    }
+def query(payload: dict):
+    """Send request to Hugging Face Inference API."""
+    response = requests.post(API_URL, headers=HEADERS, json=payload)
+    if response.status_code != 200:
+        raise Exception(f"HF API Error {response.status_code}: {response.text}")
+    return response.json()
 
-# ---------------- Summarization ----------------
-@app.post("/summarize/")
-async def summarize_endpoint(
-    text: str = Form(...),
-    manual: str = Form(...),        # kept for compatibility with frontend
-    model_choice: str = Form(...),  # kept for compatibility
-):
+
+def get_summary(text: str) -> str:
+    """Summarize text using Hugging Face API."""
     try:
-        # ✅ Only use text (ignore model_choice/manual since HF API handles it)
-        summary = get_summary(text)
-        return {"summary": summary}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
+        # Limit text length
+        if len(text) > 3000:
+            text = text[:3000]
 
-# ---------------- Translation ----------------
-@app.post("/translate/")
-async def translate_endpoint(
-    text: str = Form(...),
-    dest: str = Form(...),
-):
-    try:
-        translated = translate(text, dest)
-        if "Translation failed:" in translated:
-            raise HTTPException(status_code=400, detail=translated)
-        return {"translation": translated}
+        output = query({"inputs": text})
+
+        # Handle HF "model is loading" or error messages
+        if isinstance(output, dict) and "error" in output:
+            return f"Hugging Face Error: {output['error']}"
+
+        summary = output[0]["summary_text"]
+        return clean_summary(summary)
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+        print(f"🔥 Summarizer error: {e}")
+        return f"Error: {str(e)}"
+
+
+def clean_summary(text: str) -> str:
+    """Clean irrelevant tokens and normalize output."""
+    irrelevant = ["[music]", "[Music]", "<<", ">>", "\n"]
+    for item in irrelevant:
+        text = text.replace(item, "")
+    cleaned = text.strip()
+    normalized = unicodedata.normalize("NFKD", cleaned)
+    return normalized.encode("ascii", "ignore").decode("ascii")
