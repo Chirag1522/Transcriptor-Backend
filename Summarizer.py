@@ -1,37 +1,62 @@
-from transformers import pipeline
-import unicodedata
-import logging
+# main.py
+from fastapi import FastAPI, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from transcriber import fetch_captions
+from Summarizer import get_summary   # make sure lowercase file name matches
+from translator import translate
 
-# Optional: suppress unnecessary logs
-logging.getLogger("transformers").setLevel(logging.ERROR)
+app = FastAPI()
 
-# Use fast and lightweight summarization model
-MODEL_NAME = "sshleifer/distilbart-cnn-12-6"
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Initialize the pipeline globally (loads only once)
-summarizer_pipeline = pipeline("summarization", model=MODEL_NAME, tokenizer=MODEL_NAME)
+@app.get("/ping")
+async def ping():
+    return {"message": "pong"}
 
-def get_summary(text: str, model_choice: int = 0) -> str:
+@app.get("/")
+def read_root():
+    return {"message": "Hello, FastAPI!"}
+
+# ---------------- Transcription ----------------
+@app.post("/transcribe/")
+async def transcribe_endpoint(url: str = Form(...)):
+    transcript = fetch_captions(url)
+    return {
+        "transcript": transcript,
+        "title": "Transcribed Video",
+        "duration": 300
+    }
+
+# ---------------- Summarization ----------------
+@app.post("/summarize/")
+async def summarize_endpoint(
+    text: str = Form(...),
+    manual: str = Form(...),        # kept for compatibility with frontend
+    model_choice: str = Form(...),  # kept for compatibility
+):
     try:
-        # Limit length to ~3000 characters to avoid timeout
-        if len(text) > 3000:
-            text = text[:3000]
-
-        summary = summarizer_pipeline(
-            text,
-            max_length=130,
-            min_length=30,
-            do_sample=False
-        )[0]["summary_text"]
-
-        return clean_summary(summary)
+        # ✅ Only use text (ignore model_choice/manual since HF API handles it)
+        summary = get_summary(text)
+        return {"summary": summary}
     except Exception as e:
-        return f"Error: {str(e)}"
+        raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
 
-def clean_summary(text: str) -> str:
-    irrelevant = ["[music]", "[Music]", "<<", ">>", "\n"]
-    for item in irrelevant:
-        text = text.replace(item, "")
-    cleaned = text.strip()
-    normalized = unicodedata.normalize("NFKD", cleaned)
-    return normalized.encode("ascii", "ignore").decode("ascii")
+# ---------------- Translation ----------------
+@app.post("/translate/")
+async def translate_endpoint(
+    text: str = Form(...),
+    dest: str = Form(...),
+):
+    try:
+        translated = translate(text, dest)
+        if "Translation failed:" in translated:
+            raise HTTPException(status_code=400, detail=translated)
+        return {"translation": translated}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
