@@ -19,26 +19,17 @@ def extract_video_id(url: str) -> str:
 def fetch_captions(video_url: str) -> str:
     """
     Fetch the captions (subtitles) for a YouTube video.
-    Returns full transcript text or error message if unavailable.
+    Uses get_transcript() for simplicity and Render compatibility.
     """
     try:
         video_id = extract_video_id(video_url)
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-
-        try:
-            # Prefer manually created subtitles
-            manual_transcript = transcript_list.find_manually_created_transcript(["en", "en-US", "en-GB"])
-            transcript = manual_transcript.fetch()
-            return " ".join([item.text for item in transcript]).replace("\n", " ")
-
-        except NoTranscriptFound:
-            # Fallback to auto-generated subtitles
-            generated_transcript = transcript_list.find_generated_transcript(["en", "en-US", "en-GB"])
-            transcript = generated_transcript.fetch()
-            return " ".join([item.text for item in transcript]).replace("\n", " ")
-
-    except (NoTranscriptFound, TranscriptsDisabled):
+        # Simplified: works on all versions >=0.3.x
+        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "en-US", "en-GB"])
+        return " ".join([item["text"] for item in transcript]).replace("\n", " ")
+    except NoTranscriptFound:
         return "No captions available for this video."
+    except TranscriptsDisabled:
+        return "Transcripts are disabled for this video."
     except VideoUnavailable:
         return "Video not found."
     except Exception as e:
