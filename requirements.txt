@@ -6,7 +6,6 @@ python-dotenv
 youtube-transcript-api>=0.6.2
 deep-translator
 googletrans==4.0.0-rc1
-time
 requests
 yt_dlp
-os
+
