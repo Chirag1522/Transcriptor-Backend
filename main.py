@@ -2,14 +2,16 @@
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from transcriber import fetch_captions
-from Summarizer import get_summary   # make sure lowercase file name matches
+from Summarizer import get_summary   # ensure filename matches lowercase
 from translator import translate
 
 app = FastAPI()
 
+# Explicitly list allowed origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # frontend URL
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,22 +28,24 @@ def read_root():
 # ---------------- Transcription ----------------
 @app.post("/transcribe/")
 async def transcribe_endpoint(url: str = Form(...)):
-    transcript = fetch_captions(url)
-    return {
-        "transcript": transcript,
-        "title": "Transcribed Video",
-        "duration": 300
-    }
+    try:
+        transcript, duration = fetch_captions(url)
+        return {
+            "transcript": transcript,
+            "title": "Transcribed Video",
+            "duration": duration
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
 
 # ---------------- Summarization ----------------
 @app.post("/summarize/")
 async def summarize_endpoint(
     text: str = Form(...),
-    manual: str = Form(...),        # kept for compatibility with frontend
-    model_choice: str = Form(...),  # kept for compatibility
+    manual: str = Form(...),        # compatibility
+    model_choice: str = Form(...),  # compatibility
 ):
     try:
-        # ✅ Only use text (ignore model_choice/manual since HF API handles it)
         summary = get_summary(text)
         return {"summary": summary}
     except Exception as e:
@@ -60,3 +64,12 @@ async def translate_endpoint(
         return {"translation": translated}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+@app.get("/transcribe_test/")
+def transcribe_test(url: str):
+    transcript, duration = fetch_captions(url)
+    return {
+        "transcript": transcript,
+        "title": "Transcribed Video",
+        "duration": duration
+    }
