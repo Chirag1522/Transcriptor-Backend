@@ -9,9 +9,14 @@ app = FastAPI()
 
 # Explicitly list allowed origins
 
+origins = [
+    "https://transcriptor-frontend-1.onrender.com",  # your deployed frontend
+    "http://localhost:5173",                        # keep for local testing
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
