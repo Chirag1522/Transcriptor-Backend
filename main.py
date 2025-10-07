@@ -1,25 +1,32 @@
 # main.py
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from transcriber import fetch_captions
 from Summarizer import get_summary   # ensure filename matches lowercase
 from translator import translate
 
+
 app = FastAPI()
 
-# Explicitly list allowed origins
-
+# 1. Define the allowed origins
 origins = [
-    "https://transcriptor-frontend-1.onrender.com",  # your deployed frontend
-    "http://localhost:5173",                        # keep for local testing
+    # Allow your specific frontend domain
+    "https://transcriptor-frontend-1.onrender.com",
+    # If you also develop locally, you might include the local host
+    "http://localhost",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
 
+# 2. Add the CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=origins,              # Specifies which origins are allowed
+    allow_credentials=True,             # Allow cookies to be included in requests
+    allow_methods=["*"],                # Allow all methods (GET, POST, PUT, etc.)
+    allow_headers=["*"],                # Allow all headers
 )
 
 @app.get("/ping")
