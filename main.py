@@ -7,27 +7,33 @@ from transcriber import fetch_captions
 from Summarizer import get_summary   # ensure filename matches lowercase
 from translator import translate
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# 1. Define the allowed origins
+# Define the allowed origins.
+# You MUST include the full URL of your deployed frontend.
 origins = [
-    # Allow your specific frontend domain
+    # REQUIRED: Your deployed frontend URL
     "https://transcriptor-frontend-1.onrender.com",
-    # If you also develop locally, you might include the local host
+    
+    # RECOMMENDED: Local development URLs for testing
     "http://localhost",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
 ]
 
-# 2. Add the CORSMiddleware
+# Add the CORSMiddleware to your application instance
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,              # Specifies which origins are allowed
-    allow_credentials=True,             # Allow cookies to be included in requests
-    allow_methods=["*"],                # Allow all methods (GET, POST, PUT, etc.)
+    allow_origins=origins,              # The list of allowed domains
+    allow_credentials=True,             # Allow cookies and credentials in requests
+    allow_methods=["*"],                # Allow all HTTP methods (GET, POST, etc.)
     allow_headers=["*"],                # Allow all headers
 )
+
+# ... your other API routes (e.g., @app.get("/transcribe_test/")...)
 
 @app.get("/ping")
 async def ping():
